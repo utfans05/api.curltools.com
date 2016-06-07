@@ -1,0 +1,49 @@
+#!/bin/bash
+
+auth() {
+    read -p "What is your Account Number: " ddi
+    read -p "Whats your username: " username    
+    read -p "Whats your APIkey: " APIkey
+    read -p "Which Datacenter is the Load Balancer in? " dc
+}
+
+token() {
+    token=`curl -s https://identity.api.rackspacecloud.com/v2.0/tokens -X POST \
+    -d '{"auth":{"RAX-KSKEY:apiKeyCredentials":{"username":"'$username'", "apiKey":"'$APIkey'"}}}' \
+    -H "Content-Type: application/json" | python -m json.tool  | sed -n '/expires/{n;p;}' |sed -e 's/^.*"id": "\(.*\)",/\1/'`
+    echo "Your API Token is ---->  $token"
+}
+
+listlb() {
+
+    curl -s -H "X-Auth-Token: $token" "https://$dc.loadbalancers.api.rackspacecloud.com/v1.0/$ddi/loadbalancers" | python -m json.tool
+}
+
+listnodes() {
+    read -p "What LB do you want to check the status of? " id
+    curl -X GET -H "X-Auth-Token: $token" "https://$dc.loadbalancers.api.rackspacecloud.com/v1.0/$ddi/loadbalancers/$id/nodes" | python -m json.tool
+}
+
+lbnodestatus() {
+    read -p "What node do you want to check the status of? " nodeid
+    curl -X GET -H "X-Auth-Token: $token" -H "Content-Type: application/json" \
+    "https://$dc.loadbalancers.api.rackspacecloud.com/v1.0/$ddi/loadbalancers/$id/nodes/$nodeid" | python -m json.tool
+}
+
+pause() {
+    read -p "Press [Enter] key to view full LB connections..."
+}
+
+lbstatus() {
+     curl -X GET -H "X-Auth-Token: $token" -H "Content-Type: application/json" \
+    "https://$dc.loadbalancers.api.rackspacecloud.com/v1.0/$ddi/loadbalancers/$id/usage/current" | python -m json.tool
+}
+
+
+auth
+token
+listlb
+listnodes
+lbnodestatus
+pause
+lbstatus

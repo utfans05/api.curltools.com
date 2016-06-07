@@ -1,0 +1,45 @@
+#!/bin/bash
+auth() {
+    read -p "What is your Account Number: " ddi
+    read -p "Whats your username: " username    
+    read -p "Whats your APIkey: " APIkey
+    read -p "Which Datacenter is the Container in? " dc
+}
+
+token() {
+    token=`curl -s "https://identity.api.rackspacecloud.com/v2.0/tokens" -X POST \
+    -d '{"auth":{"RAX-KSKEY:apiKeyCredentials":{"username":"'$username'", "apiKey":"'$APIkey'"}}}' \
+    -H "Content-Type: application/json" | python -m json.tool  | sed -n '/expires/{n;p;}' |sed -e 's/^.*"id": "\(.*\)",/\1/'`
+    echo "Your API Token is ---->  $token"
+}
+
+cdnauth() {
+    cdnauth=`curl -s "https://identity.api.rackspacecloud.com/v2.0/tokens" -X POST \
+    -d '{"auth":{"RAX-KSKEY:apiKeyCredentials":{"username":"'$username'", "apiKey":"'$APIkey'"}}}' \
+    -H "Content-Type: application/json" | python -m json.tool | grep https://storage101."$dc" | sed -e 's/.*": "\(.*\)",/\1/'`
+    url=`echo $cdnauth | sed -e 's/ *$//'`
+}
+
+listcontents() {
+    curl -H "X-Auth-Token: $token" $url
+    read -p "What container do you want to list? " container
+	echo "Files in the '$container' container"
+    curl -H "X-Auth-Token: $token" $url/$container
+}
+
+wgetfile() {
+    read -p "Do you want to download a file? (Y/N) " ans
+    [[ "${ans}" != "Y" ]] && exit
+    read -p "What file do download? " file
+    read -p "Name to save file as? " filename
+    curl -H "X-Auth-Token: $token" $url/$container/$file > $filename
+}
+
+
+
+
+auth
+token
+cdnauth
+listcontents
+wgetfile

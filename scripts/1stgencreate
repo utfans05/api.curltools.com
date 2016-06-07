@@ -1,0 +1,14 @@
+#!/bin/bash
+
+1stgencreate() {
+
+    read -p "Account Number: " ddi
+    read -p "API-Token: " token
+    read -p "Server Name: " name
+    read -p "Flavor: " flavor
+    read -p "Image: " image
+    
+    curl -s -X POST "https://servers.api.rackspacecloud.com/v1.0/$ddi/servers" -H "X-Auth-Token: $token" -H "Content-Type: application/json" \
+    -d '{ "server" : { "name" : "'$name'", "flavorId" : '$flavor', "imageId" : '$image' } }' | python -m json.tool
+}
+1stgencreate

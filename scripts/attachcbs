@@ -1,0 +1,30 @@
+#!/bin/bash
+
+
+auth() {
+    read -p "What is your Account Number: " ddi
+    read -p "Whats your username:" username    
+    read -p "Whats your APIkey:" APIkey
+    read -p "Which Datacenter is the server and CBS in? " DC
+    read -p "Which server to attach the CBS to? (UUID) " ID
+    read -p "What is the CBS volume UUID? " CBS
+    read -p "Where do you want it mounted? (/dev/xvd$) " MP
+}
+
+token() {
+    token=`curl -s https://identity.api.rackspacecloud.com/v2.0/tokens -X POST \
+    -d '{"auth":{"RAX-KSKEY:apiKeyCredentials":{"username":"'$username'", "apiKey":"'$APIkey'"}}}' \
+    -H "Content-Type: application/json" | python -m json.tool  | sed -n '/expires/{n;p;}' |sed -e 's/^.*"id": "\(.*\)",/\1/'`
+    echo "Your API Token is ---->  $token"
+}
+
+attach() {
+
+    curl -s -H "X-Auth-Token: $token " -H "Content-Type: application/json" \
+    -X POST "https://$DC.servers.api.rackspacecloud.com/v2/$ddi/servers/$ID/os-volume_attachments"\
+    -d '{"volumeAttachment":{"device":"/dev/xvd'$MP'","volumeId":"'$CBS'"}}'
+}
+
+auth
+token
+attach

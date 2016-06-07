@@ -1,0 +1,38 @@
+#!/bin/bash
+
+auth() {
+    read -p "What is your Account Number: " ddi
+    read -p "Whats your username:" username
+    read -p "Whats your APIkey:" APIkey
+    read -p "Which Datacenter is the Load Balancer in? " dc
+}
+
+token() {
+
+    token=`curl -s https://identity.api.rackspacecloud.com/v2.0/tokens -X POST \
+    -d '{"auth":{"RAX-KSKEY:apiKeyCredentials":{"username":"'$username'", "apiKey":"'$APIkey'"}}}' \
+    -H "Content-Type: application/json" | python -m json.tool  | sed -n '/expires/{n;p;}' |sed -e 's/^.*"id": "\(.*\)",/\1/'`
+    echo "Your API Token is ---->  $token"
+}
+
+
+listlb() {
+    curl -s -H "X-Auth-Token: $token" "https://$dc.loadbalancers.api.rackspacecloud.com/v1.0/$ddi/loadbalancers" | python -m json.tool
+    read -p "What Load Balancer would you like to delete the node from:" id
+ }
+
+listnodes() {
+  	curl -s -X GET -H "X-Auth-Token: $token" -H "Content-Type: application/json" "https://$dc.loadbalancers.api.rackspacecloud.com/v1.0/$ddi/loadbalancers/$id/nodes" | python -m json.tool
+	read -p "Which node would you like to delete (id)? " nodeid
+}
+
+
+removenode () {
+	curl -s -X DELETE -H "X-Auth-Token: $token" -H "Content-Type: application/json" "https://$dc.loadbalancers.api.rackspacecloud.com/v1.0/$ddi/loadbalancers/$id/nodes/$nodeid"
+}
+
+auth
+token
+listlb
+listnodes
+removenode

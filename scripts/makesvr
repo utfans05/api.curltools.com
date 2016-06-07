@@ -1,0 +1,41 @@
+#!/bin/bash
+
+auth() {
+    read -p "What is your Account Number: " ddi
+    read -p "Whats your username:" username    
+    read -p "Whats your APIkey:" APIkey
+    read -p "Which Datacenter should the server be created in? " dc
+}
+
+token() {
+    
+    token=`curl -s https://identity.api.rackspacecloud.com/v2.0/tokens -X POST \
+    -d '{"auth":{"RAX-KSKEY:apiKeyCredentials":{"username":"'$username'", "apiKey":"'$APIkey'"}}}' \
+    -H "Content-Type: application/json" | python -m json.tool  | sed -n '/expires/{n;p;}' |sed -e 's/^.*"id": "\(.*\)",/\1/'`
+    echo "Your API Token is ---->  $token"
+}
+
+
+getflavors() {
+    curl -s -H "Content-Type: application/json" -H  "X-Auth-Token: $token" \
+    "https://$dc.servers.api.rackspacecloud.com/v2/$ddi/flavors" | python -m json.tool | egrep '"id"|"name"'
+     read -p "What flavor ID would you like: (e.g: performance1-1 )" flavor
+}
+
+getimages() {
+    curl -s -H "X-Auth-Token: $token" "https://$dc.servers.api.rackspacecloud.com/v2/$ddi/images" \
+    | python -m json.tool |egrep '"id"|"name"'
+    read -p "What image would you like:" image
+}
+
+createserver() {
+    read -p "What would you like to name your server:" servername
+    curl -s -X POST -H "Content-Type: application/json" -H "X-Auth-Token: $token" "https://$dc.servers.api.rackspacecloud.com/v2/$ddi/servers" \
+    -d '{"server":{"name":"'$servername'","imageRef":"'$image'","flavorRef":"'$flavor'"}}' | python -m json.tool
+}
+
+auth
+token
+getflavors
+getimages
+createserver

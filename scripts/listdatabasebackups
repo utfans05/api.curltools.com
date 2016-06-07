@@ -1,0 +1,24 @@
+#!/bin/bash
+
+
+auth() {
+    read -p "What is your Account Number: " ddi
+    read -p "Whats your username:" username
+    read -p "Whats your APIkey:" APIkey
+    read -p "Which Datacenter is the Database in? " dc
+}
+
+token() {
+    token=`curl -s https://identity.api.rackspacecloud.com/v2.0/tokens -X POST \
+    -d '{"auth":{"RAX-KSKEY:apiKeyCredentials":{"username":"'$username'", "apiKey":"'$APIkey'"}}}' \
+    -H "Content-Type: application/json" | python -m json.tool  | sed -n '/expires/{n;p;}' |sed -e 's/^.*"id": "\(.*\)",/\1/'`
+    echo "Your API Token is ---->  $token"
+}
+
+listbackups() {
+    curl -s https://$dc.databases.api.rackspacecloud.com/v1.0/$ddi/backups -H X-Auth-Token:$token | python -m json.tool
+}
+
+auth
+token
+listbackups

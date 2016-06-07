@@ -1,0 +1,40 @@
+#!/bin/bash
+
+
+#cdnauth=`curl -s https://identity.api.rackspacecloud.com/v2.0/tokens -X POST \
+#-d '{"auth":{"RAX-KSKEY:apiKeyCredentials":{"username":"'$1'", "apiKey":"'$2'"}}}' \
+#-H "Content-Type: application/json" | python -m json.tool | grep https://storage101.$3 | sed -e 's/.*": "\(.*\)",/\1/'`
+
+
+auth() {
+  echo -n "Whats your username?"
+    read username
+  echo -n "Whats your APIkey? "
+    read APIkey
+  echo "$username $APIkey"
+  source <(curl -s https://identity.api.rackspacecloud.com/v2.0/tokens -X 'POST' \
+    -d '{"auth":{"RAX-KSKEY:apiKeyCredentials":{"username":"'$username'", "apiKey":"'$APIkey'"}}}' \
+    -H "Content-Type: application/json" | ./json4bash.py -a access_token_id -a access_serviceCatalog_cloudFiles_endpoints_ORD_publicURL)
+  echo -e "$access_token_id\n$access_serviceCatalog_cloudFiles_endpoints_ORD_publicURL"
+}
+
+listcontainers()  {
+  curl -H "X-Auth-Token: $access_token_id" $access_serviceCatalog_cloudFiles_endpoints_ORD_publicURL/
+}
+
+upload() {
+  echo "What file would you like to upload?" 
+    read upload
+  echo "what container do you want to put it in?" 
+    read uploadcontainer
+  echo "What do you want to name the file?" 
+    read name
+  echo "What is the Content-Type?"
+    read type
+  curl -i -X PUT -T $upload -H "Content-Type: 'type'" -H "X-Auth-Token: $access_token_id" $access_serviceCatalog_cloudFiles_endpoints_ORD_publicURL/$uploadcontainer/$name
+}
+
+
+auth
+listcontainers
+upload

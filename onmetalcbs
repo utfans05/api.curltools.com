@@ -1,0 +1,245 @@
+Hello Customers and fellow Rackers!
+
+Today I'm going to show you how to create an OnMetal server using some scripts that I have built and also attach a CBS device to that OnMetal Server. As a caveat to this guide, all these commands were run on Debian based systems but they should also work for any RHEL based systems as the commands should be the same.
+
+ 
+
+First lets start off by building the OnMetal server. There are a few options to do this, the easiest ways are through the Control Panel (https://mycloud.rackspace.com) or through supernova or nova. I would like to point out that you will need to have a SSH key setup through the control panel or through nova in order to build an OnMetal server. ﾠhttp://www.rackspace.com/knowledge_center/article/manage-ssh-key-pairs-for-cloud-servers-with-python-novaclient. Once you have setup your SSH key you can then build the server using this guide. http://www.rackspace.com/knowledge_center/article/rackspace-cloud-essentials-creating-a-cloud-server
+
+After the server is completely built we can go ahead and create the Block Storage device by following this guide. http://www.rackspace.com/knowledge_center/article/create-and-attach-a-cloud-block-storage-volume. Unfortunately at this time, you cannot attach the block storage device to an OnMetal server through our control panel. This is where some of the script that I have written will come in very handy. At this point we still need to attach the Block Storage Volume to the OnMetal server. You can do that by utilizing a script located here. http://api.curltools.com/scripts/attachcbs
+
+To utilize this script we are going to log into your OnMetal server and all further commands will be run from there.
+
+First download the script using wget
+
+    wget http://api.curltools.com/scripts/attachcbs
+
+then you will need to run this script using bash
+
+    bash attachcbs
+
+The script will then prompt you for some information.
+
+    What is your Account Number: 
+
+    Whats your username:
+
+    Whats your APIkey:
+
+    Which Datacenter is the server and CBS in? 
+
+    Which server to attach the CBS to? (UUID) 
+
+    What is the CBS volume UUID? 
+
+    Where do you want it mounted? (/dev/xvd$) 
+
+You can get all of this information through the Rackspace Control Panel or through our API. A proper response to the last question would be only the last letter of where you want the device attached to (eg. f, g, h, etc...), for the purpose of this test we will use d. Once you have entered all of the above information the script will then give you the output of a curl that is hidden from view.
+
+{"volumeAttachment": {"device":"/dev/sdd", "serverId":"4c893d90-e222-4373-805a-d6a0b2662cd6", "id":"e490601b-db01-4e33-b690-2ccf0f06db18", "volumeId":"e490601b-db01-4e33-b690-2ccf0f06db18"}}
+
+The next step of this process is to take a look at the metadata of your OnMetal server. You can do that with the following guide. http://api.curltools.com/scripts/serverdetails To use this guide you will need to download it and then run it like you did the attachcbs script.
+
+    wget http://api.curltools.com/scripts/serverdetails
+
+    bash serverdetails
+
+
+
+The script will then ask you for some details.
+
+    What is your Account Number: 
+
+    Whats your username:
+
+    Whats your APIkey:
+
+    Which Datacenter are your servers in? 
+
+It will then output your API Token and then list all the servers located in the region you selected. (Please note that I have removed some identifying information below to keep my personal servers private :-D )
+
+{
+
+    "servers": [
+
+        {
+
+            "id": "$ID", 
+
+            "links": [
+
+                {
+
+                    "href": "$URL",
+
+                    "rel": "self"
+
+                }, 
+
+                {
+
+                    "href": "$URL”,
+
+                    "rel": "bookmark"
+
+                }
+
+            ], 
+
+            "name": "onmetal-test"
+
+        }, 
+
+        {
+
+            "id": "$ID", 
+
+            "links": [
+
+                {
+
+                    "href": "$URL",
+
+                    "rel": "self"
+
+                }, 
+
+                {
+
+                    "href": "$URL",
+
+                    "rel": "bookmark"
+
+                }
+
+            ], 
+
+            "name": "onmetal-test-2"
+
+        }
+
+From this output you will want to find the ID of the server that you are trying to build from. That is will you will put in the next question that is prompted.
+
+    What is the server id?
+
+The script will then output all of the information pertaining to that server. You will want to look at the metadata portion of the json output:
+
+"metadata": {
+
+            "rax_service_level_automation":
+"Complete", 
+
+           
+"volumes_e490601b-db01-4e33-b690-2ccf0f06db18":
+"{\"target_iqn\":
+\"iqn.2010-11.com.rackspace:e490601b-db01-4e33-b690-2ccf0f06db18\",
+\"target_portal\": \"10.190.143.19:3260\",
+\"initiator_name\":
+\"iqn.2008-10.org.openstack:b6b71374-5675-4290-9b36-0acb8113caf9\"}"
+
+        }, 
+
+        "name": "onmetal-test",
+
+        "progress": 100, 
+
+        "status": "ACTIVE",
+
+        "tenant_id": "$ID",
+
+        "updated":
+"2015-08-05T05:58:22Z", 
+
+        "user_id": "$UID"
+
+    }
+
+You are going to need the target_iqn, target_portal, and initiator_name values later in this guide. At this point you are going to want to install some packages on your system.
+
+For Debian based systems you will run the following:
+
+
+
+     apt-get update
+
+     apt-get install open-iscsi
+
+For RHEL based systems you will run the following:
+
+    yum install iscsi-initiator-utils
+
+
+
+Now you need to set some variables.
+
+    INITIATOR_NAME=iqn.2008-10.org.openstack:b6b71374-5675-4290-9b36-0acb8113caf9
+
+    TARGET_IQN=iqn.2010-11.com.rackspace:e490601b-db01-4e33-b690-2ccf0f06db18
+
+    TARGET_PORTAL=10.190.143.19:3260
+
+Now we need to echo the InitiatorName into the proper config file.
+
+    echo InitiatorName=$INITIATOR_NAME > /etc/iscsi/initiatorname.iscsi
+
+
+
+Now we can attempt to find the iscsi connection.
+
+    iscsiadm -m discovery --type sendtargets --portal $TARGET_PORTAL
+
+This should output something similar to this:
+
+    10.69.192.134:3260,1 iqn.2010-11.com.rackspace:e490601b-db01-4e33-b690- 2ccf0f06db18
+
+    10.190.143.19:3260,1 iqn.2010-11.com.rackspace:e490601b-db01-4e33-b690- 2ccf0f06db18
+
+Now we can create the iscsi session.
+
+    iscsiadm -m node --targetname=$TARGET_IQN --portal $TARGET_PORTAL --login
+
+This command should output something similar to this:
+
+    Logging in to [iface: default, target: iqn.2010-11.com.rackspace:e490601b-db01-4e33-b690-2ccf0f06db18, portal: 10.190.143.19,3260]
+
+    Login to [iface: default, target: iqn.2010-11.com.rackspace:e490601b-db01-4e33-b690-2ccf0f06db18, portal: 10.190.143.19,3260]: successful
+
+
+
+Now we can see if it is properly attached using lsblk
+
+lsblk
+
+It should output something similar to this.
+
+    NAME      MAJ:MIN RM    SIZE     RO   TYPE  MOUNTPOINT
+
+    sda       8:0   0   28.9G  0    disk 
+
+    ├─sda1    8:1       0   28.8G  0    part     /
+
+    └─sda2    8:2       0     64M    0  part 
+
+    sdb       8:16      0       75G    0    disk 
+
+
+
+Now we need to make the connection persistent so that it automatically restarts the iscsi session upon startup.
+
+    iscsiadm -m node -T $TARGET_IQN -p $TARGET_PORTAL --op update -n node.startup -v automatic
+
+
+
+At this point the Block Storage device is attached properly and you can do as you like with it. A good starting point from here is to start with this guide. https://www.rackspace.com/knowledge_center/article/prepare-your-cloud-block-storage-volume.
+
+When you get ready to delete the server you will need to detach the CBS from the OnMetal server or it will cause issues with the deletion process. To do that you will need to run the following command with the proper variables.
+
+iscsiadm -m node --targetname=$TARGET_IQN --portal $TARGET_PORTAL --logout
+
+And that's how attaching a CBS to an OnMetal server is properly done.
+
+If you are looking for more ways to interact with our API you can check out the following links:
+
+https://docs.rackspace.com
+http://api.curltools.com
+

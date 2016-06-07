@@ -1,0 +1,32 @@
+#!/bin/bash
+
+auth() {
+    read -p "What is your Account Number: " ddi
+    read -p "Whats your username:" username
+    read -p "Whats your APIkey:" APIkey
+    read -p "Which Datacenter is the Server in? " dc
+}
+
+token() {
+    token=`curl -s https://identity.api.rackspacecloud.com/v2.0/tokens -X POST \
+    -d '{"auth":{"RAX-KSKEY:apiKeyCredentials":{"username":"'$username'", "apiKey":"'$APIkey'"}}}' \
+    -H "Content-Type: application/json" | python -m json.tool  | sed -n '/expires/{n;p;}' |sed -e 's/^.*"id": "\(.*\)",/\1/'`
+    echo "Your API Token is ---->  $token"
+}
+
+listservers() {
+    curl -s -H "X-Auth-Token: $token" -H "Content-Type: application/json" -X GET "https://$dc.servers.api.rackspacecloud.com/v2/$ddi/servers/detail" | python -m json.tool
+    read -p "What server do you want to take the image of:" id
+}
+
+createimage() {
+    read -p "What should the image be named? " name
+    curl -i -X POST "https://$dc.servers.api.rackspacecloud.com/v2/$ddi/servers/$id/action" -H "X-Auth-Token: $token" -H "Content-Type: application/json" \
+    -d '{"createImage" : {"name" : "'$name'"}}'
+
+}
+
+auth
+token
+listservers
+createimage

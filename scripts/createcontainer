@@ -1,0 +1,33 @@
+#!/bin/bash
+
+auth() {
+    read -p "What is your Account Number: " ddi
+    read -p "Whats your username: " username    
+    read -p "Whats your APIkey: " APIkey
+    read -p "Which Datacenter do you want the Container in? " dc
+}
+
+token() {
+    token=`curl -s "https://identity.api.rackspacecloud.com/v2.0/tokens" -X POST \
+    -d '{"auth":{"RAX-KSKEY:apiKeyCredentials":{"username":"'$username'", "apiKey":"'$APIkey'"}}}' \
+    -H "Content-Type: application/json" | python -m json.tool  | sed -n '/expires/{n;p;}' |sed -e 's/^.*"id": "\(.*\)",/\1/'`
+    echo "Your API Token is ---->  $token"
+}
+
+cdnauth() {
+    cdnauth=`curl -s "https://identity.api.rackspacecloud.com/v2.0/tokens" -X POST \
+    -d '{"auth":{"RAX-KSKEY:apiKeyCredentials":{"username":"'$username'", "apiKey":"'$APIkey'"}}}' \
+    -H "Content-Type: application/json" | python -m json.tool | grep https://storage101."$dc" | sed -e 's/.*": "\(.*\)",/\1/'`
+    url=`echo $cdnauth | sed -e 's/ *$//'`
+}
+
+createcontainer() {
+    read -p "What do you want to name the container? " container
+    curl -I -X PUT -H "X-Auth-Token: $token" $url/$container
+}
+
+auth
+token
+cdnauth
+createcontainer
+

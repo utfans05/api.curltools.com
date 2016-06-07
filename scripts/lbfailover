@@ -1,0 +1,30 @@
+#!/bin/bash
+
+read -p "What is your Account Number: " ACCTUNM
+read -p "What is your Username: " USER
+read -p "What is your API Key: " API
+read -p "What region is the Load Balancer in: (ord,iad,dfw,lon,hkg,syd) " REGION
+read -p "What is the LBID: " LBID
+read -p "What port is the server listening on: " PORT
+read -p "Which IP would you like set to the failover: " ADDRESS
+
+TOKEN=`curl -s https://identity.api.rackspacecloud.com/v2.0/tokens -X POST \
+    -d '{"auth":{"RAX-KSKEY:apiKeyCredentials":{"username":"'$USER'", "apiKey":"'$API'"}}}' \
+    -H "Content-Type: application/json" | python -m json.tool  | sed -n '/expires/{n;p;}' |sed -e 's/^.*"id": "\(.*\)",/\1/'`
+
+
+curl -s -X POST https://$REGION.loadbalancers.api.rackspacecloud.com/v1.0/$ACCTNUM/loadbalancers/$LBID/nodes \
+  -H "X-Auth-Token: $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d \
+    '{"nodes": [
+             {
+                 "address": "'$ADDRESS'",
+                 "port": '$PORT',
+                 "condition": "ENABLED",
+                 "type": "SECONDARY"
+             }
+        ]
+     }' | python -m json.tool
+
+

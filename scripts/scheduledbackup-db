@@ -1,0 +1,42 @@
+#!/bin/bash
+
+auth() {
+    read -p "What is your Account Number: " ddi
+    read -p "Whats your username:" username    
+    read -p "Whats your APIkey:" APIkey
+    read -p "Which Datacenter is the Database in? " dc
+}
+
+token() {
+    token=`curl -s https://identity.api.rackspacecloud.com/v2.0/tokens -X POST \
+    -d '{"auth":{"RAX-KSKEY:apiKeyCredentials":{"username":"'$username'", "apiKey":"'$APIkey'"}}}' \
+    -H "Content-Type: application/json" | python -m json.tool  | sed -n '/expires/{n;p;}' |sed -e 's/^.*"id": "\(.*\)",/\1/'`
+    echo "Your API Token is ---->  $token"
+}
+
+
+listdatabases() {
+    curl -s https://$dc.databases.api.rackspacecloud.com/v1.0/$ddi/instances -H "X-Auth-Token: $token" | python -m json.tool
+    read -p "Which database do you want to backup (ID): " uuid
+    
+}
+
+databasebackup () {
+    echo "What day of the week do you want to back this database up? (0-6): " 
+    echo "Sunday = 0   Saturday = 6" 
+    read -p "Day= " day
+    read -p "What hour of the day do you want the database backed up? (00-23): " hour
+    read -p "What minute of the hour do you want the database backed up? (00-59): " minute
+    curl -s -X POST "https://$dc.databases.api.rackspacecloud.com/v1.0/$ddi/schedules" -H "X-Auth-Token: $token" \
+    -d '{"schedule": {"action": "backup", "day_of_week": '$day', "hour": '$hour', "instance_id": "'$uuid'", "minute": '$minute' }}' \
+    -H "Content-type: application/json"  | python -m json.tool
+
+}
+
+auth
+token
+listdatabases
+databasebackup
+
+
+

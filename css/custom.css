@@ -1,0 +1,58 @@
+body {
+    margin-top: 65px;
+    margin-bottom: 65px;
+}
+
+#copymark {
+  padding: 15px;
+}
+
+#PoweredBy {
+  margin: 5px;
+  height: 40px;
+}
+
+#designer {
+  padding-left: 10px;
+}
+
+.sidenav-fixed {
+    position: fixed;
+}
+
+.sidenav > li.active {
+    border-left: 2px solid #563d7c;
+    padding-left: 0px;
+}
+
+.sidenav > li {
+    padding-left: 2px;
+}
+
+.sidenav > li > a {
+    padding: 5px;
+}
+
+.scripts > h4 {
+    padding-top: 65px;
+    margin-top: -65px;
+}
+
+pre.script-container {
+  display: block;
+  width: auto;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  white-space: pre;
+  word-wrap: normal;
+  position: relative;
+}
+
+pre code {
+  white-space: inherit;
+}
+
+/*pre {
+  position: relative;
+}*/
+

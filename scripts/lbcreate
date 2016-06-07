@@ -1,0 +1,40 @@
+#!/bin/bash
+
+auth() {
+    read -p "What is your Account Number: " ddi
+    read -p "Whats your username:" username    
+    read -p "Whats your APIkey:" APIkey
+    read -p "Which Datacenter should the Load Balancer be created in? " dc
+}
+
+token() {
+    token=`curl -s https://identity.api.rackspacecloud.com/v2.0/tokens -X POST \
+    -d '{"auth":{"RAX-KSKEY:apiKeyCredentials":{"username":"'$username'", "apiKey":"'$APIkey'"}}}' \
+    -H "Content-Type: application/json" | python -m json.tool  | sed -n '/expires/{n;p;}' |sed -e 's/^.*"id": "\(.*\)",/\1/'`
+    echo "Your API Token is ---->  $token"
+}
+
+protocols() {
+    read -p "What name do you want your load balancer to have? " name
+    read -p "What port should the load balancer service:" port
+    read -p "What protocol is this load balancer going to use? " protocol
+    read -p "What condition do you want this load balancer to be created in (default is ENABLED): " condition
+}
+
+listservers() {
+    curl -s -H "X-Auth-Token: $token" -H "Content-Type: application/json" -X GET "https://$dc.servers.api.rackspacecloud.com/v2/$ddi/servers/detail" | python -m json.tool | egrep '"name"|"addr"' 
+    read -p "What server do you want to add to the Load Balancer: (internal ip 10.X.X.X) " address
+}
+
+createlb() {
+    curl -s -X POST -H "Content-Type: application/json" -H "X-Auth-Token: $token" "https://$dc.loadbalancers.api.rackspacecloud.com/v1.0/$ddi/loadbalancers/" \
+    -d '{"loadBalancer": {"name": "'$name'","port": "'$port'","protocol": "'$protocol'","virtualIps": [{"type": "PUBLIC"}],"nodes": [{"address": "'$address'","'port'": "'$port'","condition": "'$condition'"}]}}' \
+    | python -m json.tool
+
+}
+
+auth
+token
+protocols
+listservers
+createlb 

@@ -1,0 +1,38 @@
+#!/bin/bash
+
+auth() {
+    read -p "What is your Account Number: " ddi
+    read -p "Whats your username:" username    
+    read -p "Whats your APIkey:" APIkey
+    read -p "Which Datacenter is the server in? " dc
+}
+
+token() {
+    
+    token=`curl -s https://identity.api.rackspacecloud.com/v2.0/tokens -X POST \
+    -d '{"auth":{"RAX-KSKEY:apiKeyCredentials":{"username":"'$username'", "apiKey":"'$APIkey'"}}}' \
+    -H "Content-Type: application/json" | python -m json.tool  | sed -n '/expires/{n;p;}' |sed -e 's/^.*"id": "\(.*\)",/\1/'`
+    echo "Your API Token is ---->  $token"
+}
+
+getservers() {
+    curl -s -H "X-Auth-Token: $token" "https://$dc.servers.api.rackspacecloud.com/v2/$ddi/servers/detail" | python -m json.tool
+    read -p "Which server do you want to resize?" id
+}
+
+getflavors() {
+    curl -s -H "Content-Type: application/json" -H  "X-Auth-Token: $token" "https://$dc.servers.api.rackspacecloud.com/v2/$ddi/flavors" | python -m json.tool | egrep '"id"|"name"'
+    echo "YOU CANNOT RESIZE FROM A STANDARD TO A PERFORMANCE, OR RESIZE PEFORMANCE SERVERS!!!"
+    read -p "What flavor size do you want to resize to? (e.g: performance1-1 )" flavor
+}
+
+resize () {
+    curl -i -X POST https://$dc.servers.api.rackspacecloud.com/v2/$ddi/servers/$id/action \
+    -H "X-Auth-Token: $token" -H "Content-Type: application/json"  -d '{"resize":{"flavorRef":"'$flavor'"}}'
+}
+
+auth
+token
+getservers
+getflavors
+resize

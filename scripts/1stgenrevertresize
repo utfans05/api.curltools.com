@@ -1,0 +1,10 @@
+#!/bin/bash
+
+1stgenrevert() {
+    read -p "DDI?" DDI
+    read -p "Token?" Token
+    read -p "Server ID" ID
+    curl -i -X POST "https://servers.api.rackspacecloud.com/v1.0/$DDI/servers/$ID/action"-H "X-Auth-Token: $Token" -H "Content-Type: application/json" -d '{"revertResize": null}'
+}
+
+1stgenrevert

@@ -1,0 +1,17 @@
+#!/bin/bash
+
+####### To use the command properly you need to call the command with your username,
+####### apikey and datacenter you want to hit at the same time. 
+####### EX ./cdnauth username apikey datacenter
+
+cdnauth=`curl -s https://identity.api.rackspacecloud.com/v2.0/tokens -X POST \
+        -d '{"auth":{"RAX-KSKEY:apiKeyCredentials":{"username":"'$1'", "apiKey":"'$2'"}}}' \
+        -H "Content-Type: application/json" | python -m json.tool | grep https://storage101.$3 | sed -e 's/.*": "\(.*\)",/\1/'`
+
+echo $cdnauth
+
+token=`curl -s https://identity.api.rackspacecloud.com/v2.0/tokens -X POST \
+        -d '{"auth":{"RAX-KSKEY:apiKeyCredentials":{"username":"'$1'", "apiKey":"'$2'"}}}' \
+        -H "Content-Type: application/json" | python -m json.tool | sed -n '/expires/{n;p;}' |sed -e 's/^.*"id": "\(.*\)",/\1/'`
+
+echo $token 

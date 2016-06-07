@@ -1,0 +1,53 @@
+#!/bin/bash
+
+warning() {
+    echo "
+    #################################################################################################################
+    ##########!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!READ ME FIRST!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!###########
+    ##########!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!READ ME FIRST!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!###########
+    #################################################################################################################
+    ##########           From the API Source documentation Section 4.2.7. Enable Root User                 ##########
+    ##########   Changes you make as a root user may cause detrimental effects to the database instance    ##########
+    ##########   and unpredictable behavior for API operations. When you enable the root user, you         ##########
+    ##########   accept the possibility that Rackspace will not be able to support your database instance  ##########
+    ##########   While enabling root does not prevent Rackspace from a best effort approach to helping     ##########
+    ##########   you if something goes wrong with your instance, Rackspace cannot ensure that they will be ##########
+    ##########   able to assist you if you change core MySQL settings. These changes can be (but are not   ##########
+    ##########   limited to) turning off binlogs, removing users that we use to access your instance, and  ##########
+    ##########   so forth.                                                                                 ##########
+    #################################################################################################################
+    ##########!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!READ ME FIRST!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!###########
+    ##########!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!READ ME FIRST!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!###########
+    #################################################################################################################
+"
+}
+
+auth() {
+    read -p "What is your Account Number: " ddi
+    read -p "Whats your username:" username    
+    read -p "Whats your APIkey:" APIkey
+    read -p "Which Datacenter is the Database in? " dc
+}
+
+token() {
+    token=`curl -s https://identity.api.rackspacecloud.com/v2.0/tokens -X POST \
+    -d '{"auth":{"RAX-KSKEY:apiKeyCredentials":{"username":"'$username'", "apiKey":"'$APIkey'"}}}' \
+    -H "Content-Type: application/json" | python -m json.tool  | sed -n '/expires/{n;p;}' |sed -e 's/^.*"id": "\(.*\)",/\1/'`
+    echo "Your API Token is ---->  $token"
+}
+
+
+listdatabases() {
+    curl -s https://$dc.databases.api.rackspacecloud.com/v1.0/$ddi/instances -H "X-Auth-Token: $token" | python -m json.tool
+}
+
+enableroot() {
+    read -p "Which database do you want to enable root access for? " dbid
+    curl -s -X POST -H "X-Auth-Token: $token" -H "Content-Type: application/json" https://$dc.databases.api.rackspacecloud.com/v1.0/$ddi/instances/$dbid/root
+}
+
+warning
+auth
+token
+listdatabases
+enableroot

@@ -1,0 +1,7 @@
+#!/bin/bash
+
+####### To use the command properly you need to call the command with your username and apikey.
+####### EX ./cdnauth username apikey
+curl -s https://identity.api.rackspacecloud.com/v2.0/tokens -X POST \
+-d '{"auth":{"RAX-KSKEY:apiKeyCredentials":{"username":"'$1'", "apiKey":"'$2'"}}}' \
+-H "Content-Type: application/json" | python -m json.tool  | sed -n '/expires/{n;p;}' |sed -e 's/^.*"id": "\(.*\)",/\1/'

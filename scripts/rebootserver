@@ -1,0 +1,30 @@
+#!/bin/bash
+
+auth() {
+    read -p "What is your Account Number: " ddi
+    read -p "Whats your username:" username
+    read -p "Whats your APIkey:" APIkey
+    read -p "Which Datacenter is the server in? " dc
+}
+
+token() {
+    token=`curl -s https://identity.api.rackspacecloud.com/v2.0/tokens -X POST \
+    -d '{"auth":{"RAX-KSKEY:apiKeyCredentials":{"username":"'$username'", "apiKey":"'$APIkey'"}}}' \
+    -H "Content-Type: application/json" | python -m json.tool  | sed -n '/expires/{n;p;}' |sed -e 's/^.*"id": "\(.*\)",/\1/'`
+    echo "Your API Token is ---->  $token"
+}
+
+listservers() {
+    curl -s -H "X-Auth-Token: $token" "https://$dc.servers.api.rackspacecloud.com/v2/$ddi/servers" | python -m json.tool
+}
+
+reboot() {
+    read -p "Which server do you want to reboot?" id
+    curl -s -X POST "https://$dc.servers.api.rackspacecloud.com/v2/$ddi/servers/$id/action" \
+    -H "X-Auth-Token: $token" -H "Content-Type: application/json"  -d '{"reboot" : {"type" : "HARD"}}'
+}
+
+auth
+token
+listservers
+reboot
