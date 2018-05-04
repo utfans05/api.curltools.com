@@ -1,42 +1,99 @@
+##Heat log locations###
+/tmp/heat_chef/chef-stacktrace.out
+/tmp/heat_chef/<UUID>/chef.log
+/var/log/messages
+/var/log/syslog
+
+-----------------------------------------------------------------------------------------------------------
+
+
+###1st Gen networking limits###
+Server Size   Public Limit  ServiceNet Limit
+256MB          10 Mbps         20 Mbps
+512MB          20 Mbps         40 Mbps
+1024MB         30 Mbps         60 Mbps
+2048MB         40 Mbps         80 Mbps
+4096MB         50 Mbps         100 Mbps
+8192MB         60 Mbps         120 Mbps
+15872MB        70 Mbps         140 Mbps
+
+-----------------------------------------------------------------------------------------------------------
+
+
 ####ADD NO RESIZE FLAG ON IMAGE####
 supernova iad image-meta 2ee83e98-a1ef-4701-838f-af74b5550ebe set com.rackspace__1__options=0
 com.rackspace__1__resize_disk
 
+-----------------------------------------------------------------------------------------------------------
+
+
 ###FOOTER###
 vhd-util read -p -n /var/run/sr-mount/<TAB>/$VDI-UUID.vhd | tail -c 512 | hexdump -C 
+ 
+-----------------------------------------------------------------------------------------------------------
+
 
 ###AKAMAI HEADERS###
 curl -is -H "Pragma: akamai-x-cache-on, akamai-x-cache-remote-on, akamai-x-check-cacheable, akamai-x-get-cache-key, akamai-x-get-extracted-values, akamai-x-get-nonces, akamai-x-get-ssl-client-session-id, akamai-x-get-true-cache-key, akamai-x-serial-no" -IXGET $UPLOAD
 
+-----------------------------------------------------------------------------------------------------------
+
+
 ###URL STUFF###
 tail -30 /var/log/auth.log | curl -s -T - chunk.io
+
+-----------------------------------------------------------------------------------------------------------
+
 
 ###see which CBS belongs to which sd(*)###
 iscsiadm -P 3 -m session
 
+-----------------------------------------------------------------------------------------------------------
+
+
 ###VBD-Create###
 xe vbd-create vdi-uuid=$vm-uuid type=Disk mode=rw bootable=false device=xvd($) vm-uuid=$uuid
+
+-----------------------------------------------------------------------------------------------------------
 
 
 ###SAR DIGGING###
 ###XenServer###
-for log in `ls /var/log/sa/sa[0-9]* | sed 's#@##'`; do echo $log; sar -q -n DEV -f $log | grep vif67 ;  done | curl -sT - chunk.io
+for log in `ls /var/log/sa/sa[0-9]* | sed 's#@##'`; do echo $log; sar -q -n DEV -f $log | grep vif2781.[0-4] ;  done | curl -sT - chunk.io
+
+-----------------------------------------------------------------------------------------------------------
+
 
 ###XenClassic###
 for log in `ls /var/log/sysstat/sa{0-9]* | sed -e 's#@##'` ; do echo $log ; sar -q -n DEV -f $log | grep vif89.0 ; done | less
 
+-----------------------------------------------------------------------------------------------------------
+
+
 ####top 10 cpu and ram users####
 echo "CPU" ; ps awfux | sort -nk +3 | tail -10 && echo "RAM" ; ps aux | sort -nk +4 | tail -10
+
+-----------------------------------------------------------------------------------------------------------
+
 
 ###sar network info###
 sar -b -n DEV | grep vifXXX.X
 
+-----------------------------------------------------------------------------------------------------------
+
+
 ###Find all the things###
 ps aux | egrep -A5 'tar |gzip|rsync|glance|vhd|tap-ctl|dd'
+
+-----------------------------------------------------------------------------------------------------------
+
 
 ###SWAP HUNTING###
 ###XENSERVER:###
 for uuid in `xe vbd-list params=uuid | awk '{print $5}'` ; do name=`xe vbd-list device=xvdc uuid=$uuid params=vm-name-label | awk '{print $5}'` ; if [[ -z $name ]] ; then continue ; else slice=`xe vm-list name-label=$name params=name-description | awk '{print $5}'`; echo -e "$name ($slice) - swap" ; xe vbd-param-list device=xvdc uuid=$uuid | fgrep io_ ; echo -e "\n"; fi ; done
+
+-----------------------------------------------------------------------------------------------------------
+
 
 ###MANUALLY###
 iostat -xkd 1 #Find which device#
@@ -44,90 +101,197 @@ cat /sys/block/td($)/dev #Will give a major:minor number.
 tap-ctl list -m $minor #$minor number from previous command. 
 xe vdi-list vdi-uuid=$vdi #vdi comes from previous command. 
 
+-----------------------------------------------------------------------------------------------------------
+
+
 ###XENCLASSIC:###
 for SLICE in $(xm list | grep -E '^slice' | awk '{print $1}'); do for DEVICE in $(ls -l /dev/mapper/*_swap | grep $SLICE | awk '{print $6}'); do echo $SLICE; iostat -xkd dm-$DEVICE | grep dm- | awk '{print "\tio_rkB/s: "$6"\n\tio_wkB/s: "$7"\n\t%util: " $12"\n"}' ; done ; done
+
+-----------------------------------------------------------------------------------------------------------
+
 
 ###MANUALLY###
 iostat -xkd 1 #will give results like dm-##
 ls -l /dev/mapper | grep ' $# '  #$3 is from last command
+
+-----------------------------------------------------------------------------------------------------------
+
 
 ###DOMAIN DESTROY###
 ###ONLY USE THIS IF NOTHING ELSE WORKS!!!###
 xe vm-list name-label=instance-$id params=dom-id
 /opt/xensource/debug/destroy_domain -debug -domid $#
 
+-----------------------------------------------------------------------------------------------------------
+
+
 ###view networking###
 bwm-ng -o plain -u packets
 bwm-ng
 
+-----------------------------------------------------------------------------------------------------------
+
+
 ###Slice VHDs###
-ID=instance-518143de-194d-4968-a80c-0b986aa6488c ; vhd-util scan -a -p /var/run/sr-mount/*/`xe vdi-list name-label=$ID params=uuid --minimal`.vhd
+ID=instance-90070dd0-fae1-410c-bd0a-7f718d1be269 ; vhd-util scan -a -p /var/run/sr-mount/*/`xe vdi-list name-label=$ID params=uuid --minimal`.vhd
+
+-----------------------------------------------------------------------------------------------------------
+
 
 ###VHD SCAN ALL###
 vhd-util scan -f -p -m /var/run/sr-mount/<TAB>/*.vhd
+
+-----------------------------------------------------------------------------------------------------------
+
 
 ###XAPI Restart###\
 ###ONLY DO THIS IF THERE ARE NO STUCK TAP-CLOSE PROCESSES###
 xe-toolstack-restart
 
+-----------------------------------------------------------------------------------------------------------
+
+
 ###Grub view/edit###
 xe-edit-bootloader -n slice$number -p 1
 xe-edit-bootloader -n instance-$uuid -p 1 -f /etc/fstab
 
+-----------------------------------------------------------------------------------------------------------
+
+
 ###NOVA-AGENT FROM HOST###
-label=slice10039691; uuid=`uuidgen`; domid=$(xe vm-list name-label=$label params=dom-id --minimal); xenstore-write /local/domain/$domid/data/host/$uuid '{"name":"version","value":"agent"}'; sleep 10 ; xenstore-read /local/domain/$domid/data/guest/$uuid
+label=instance-d0760496-2798-4fad-8657-895e7257b683  ;  uuid=`uuidgen`; domid=$(xe vm-list name-label=$label params=dom-id --minimal); xenstore-write /local/domain/$domid/data/host/$uuid '{"name":"version","value":"agent"}'; sleep 10 ; xenstore-read /local/domain/$domid/data/guest/$uuid
+
+-----------------------------------------------------------------------------------------------------------
+
 
 ###NOVA-AGENT RECONFIGURE NETWORK###
-label=instance-6f75123a-83c4-4faa-ab66-dc04207223de; uuid=$(uuidgen); domid=$(xe vm-list name-label=$label params=dom-id --minimal); xenstore-write /local/domain/$domid/data/host/$uuid '{"name":"resetnetwork","value":""}'; sleep 10 ; xenstore-read /local/domain/$domid/data/guest/$uuid ; unset label; unset uuid; unset domid
+
+label=instance-64badbf0-3b2a-4fbe-b873-11e8e3b9442b ;    uuid=$(uuidgen); domid=$(xe vm-list name-label=$label params=dom-id --minimal); xenstore-write /local/domain/$domid/data/host/$uuid '{"name":"resetnetwork","value":""}'; sleep 30 ; xenstore-read /local/domain/$domid/data/guest/$uuid ; unset label; unset uuid; unset domid
+
+-----------------------------------------------------------------------------------------------------------
+
 
 ###VDI chain script###
-
 (echo -e "VDI label\tDev\tChain Size\tCoal. %\tSnapshot\tUUID"; vhd-util scan -f -p -m /var/run/sr-mount/*/*.vhd | awk '{uuid=substr($1,5,36); size=substr($3,6); parent=substr($NF,8,36); if(parent=="none") {bob[uuid]=0; bs[uuid]=size}else{bob[uuid]=bob[parent]+1;bs[uuid]=bs[parent]+size}; ("/opt/xensource/bin/xe vdi-list params=name-label minimal=true uuid="uuid) |& getline name; if(name=="") name="unknown"; ("/opt/xensource/bin/xe vdi-list params=is-a-snapshot minimal=true uuid="uuid) |& getline snapshot; if(snapshot=="") snapshot="?????"; ("/opt/xensource/bin/xe vbd-list params=device minimal=true vdi-uuid="uuid) |& getline device; if(device=="") device="----"; if(bob[uuid]>0) t=" |"; else t=""; for(i=0;i<bob[uuid];i++) t=t"--"; if(bob[parent]=="" && bob[uuid]!=0) print "Orphan below!"; if(bob[uuid]==1 && bs[uuid]/2^20>160000) {cp=int((167772160000-bs[parent])/(bs[uuid]-bs[parent])*100+0.5); if(cp>100) cp=100; if(cp<0) cp=0; cp=cp"%"}else{cp="-"}; printf "%s%s\t%s\t%6.1f GiB\t% s\t%s\t%s\n",t,name,device,int(bs[uuid]/2^30*10+0.5)/10,cp,snapshot,uuid }') | column -ts "$(echo -e "\t")"
 
+-----------------------------------------------------------------------------------------------------------
+
+### VDI Chain Perl script ###
+
+perl -e 'chomp($_ = `echo /var/run/sr-mount/*`); chdir $_; chomp($_ = $ARGV[0]); $_ = m/^(slice|instance)/ ? $_ : m/^\d+$/ ? "slice$_" : "instance-$_"; sub gb { sprintf("%g", $_[0] / 2**30) } print "\nfor $_:\n"; for (split/,/, `xe vbd-list vm-name-label=$_ params=vdi-uuid --minimal`) { chomp; if (-e "$_.vhd") {  for(`vhd-util scan -ap $_.vhd`) { ($i, $v, $c, $s) = m/(^\s*)vhd=([0-9a-f-]+)\.vhd capacity=(\d+) size=(\d+)/; $t+=$s; print $i, $v, " ",  gb($s), "/", gb($c), "\n"; }}} $m = 1.138 * gb($t); $h = int $m / 60; $m = $m % 60; print gb($t), " GB in VHDs, approx xfer time $h hours, $m minutes at 15MB/s\n\n"' $slice
+-----------------------------------------------------------------------------------------------------------
 
 
 ### MEMORY FOR TCP DUMP###
-tcpdump: can't create rx ring on packet socket: Cannot allocate memory
+#tcpdump: can't create rx ring on packet socket: Cannot allocate memory
 sync
 echo 3 > /proc/sys/vm/drop_caches
 tcpdump -nni vif$###.#
 
+-----------------------------------------------------------------------------------------------------------
+
+
 ###STUCK TAP-CTL CLOSE
 kill -TERM $(ps fauxww | grep "[t]ap-ctl close" | sed -e "s/.*-p //" | awk '{print $1}')
+
+-----------------------------------------------------------------------------------------------------------
+
 
 ###restart all the things###
 /etc/init.d/lldpd restart ; sleep 10 ; /opt/rackspace/xen-networking-scripts/reboot_plug -v -d ; sleep 10 ;  populate_rxtx ; sleep 10 ; reticulate_splines --cause-outage -v ; sleep 10 ; validate_host
 
+-----------------------------------------------------------------------------------------------------------
+
+
 ###PATCH min_DISK###
 read -p "What Account? " ddi ; read -p "what region? " region ; read -p "Token= " token ; read -p "Image uuid? " image ; read -p "Size? " size ; curl -liv -X PATCH -H "Content-Type: application/openstack-images-v2.1-json-patch" -H "X-Auth-Token: $token" https://$region.images.api.rackspacecloud.com/v2/$ddi/images/$image -d '[{"op":"replace","path":"/min_disk","value":'$size'}]' 
 
+-----------------------------------------------------------------------------------------------------------
+
+
 ###Target Build###
 supernova --insecure temp --bypass_url https://nova-admin.lon.ohthree.com/v2/10043177 boot --hint target_cell='lon!b0008' --image fabe045f-43f8-4991-9e6c-5cabd617538c  --flavor general1-2 frontend-2-int-$i 
+
+-----------------------------------------------------------------------------------------------------------
 
  
 ###NETSTED LOOP for IOSTAT###
 for vdi in $(for p in $(for i in i r  ; do cat /sys/block/td$i/dev ; done | cut -d ":" -f 2); do tap-ctl list -m $p |cut -d "/" -f 6 | sed 's/.vhd//g' ; done ) ; do xe vdi-list uuid=$vdi; done
 
-###migrate vault###
+-----------------------------------------------------------------------------------------------------------
 
- curl -X PUT -i -H "X-Auth-Token: AACF6a7z9bxgxOETZSLJCO9Wtp2Vx4RrLbLdeVjZ44yEwucCZl2QWz8ZCNIXOvjp34M7KPiI172fqwqHqwINTn4L6_Xuih2SePOb155Cw98ymw3xeH4SaVVK"  -H "Content-type: application/json" https://ord.backup.api.rackspacecloud.com/v1.0/828592/agent/migratevault -d '{"SourceMachineAgentId":517927, "DestinationMachineAgentId":653338}'
+
+###migrate vault###
+curl -X PUT -i -H "X-Auth-Token: $token"  -H "Content-type: application/json" https://$region.backup.api.rackspacecloud.com/v1.0/$ddi/agent/migratevault -d '{"SourceMachineAgentId":"$source", "DestinationMachineAgentId":$destination"}'
+
+-----------------------------------------------------------------------------------------------------------
+
+###Backup Test###
+
+curl -s https://raw.githubusercontent.com/janpokrzywinski/rscbtest/master/backuptest.sh | bash
+
+-----------------------------------------------------------------------------------------------------------
+
 
 ###delete all Cloud Files in a Container####
 swiftly --eventlet --concurrency=100 for "" --output-names do delete "<item>" --recursive --until-empty
 
+-----------------------------------------------------------------------------------------------------------
+
+
 ####Neutron with JQ to find port uuid####
 curl -s -H "X-Auth-Token: AADM95Asy_1dPZpQXlCCwSmylzmXWp7PoM_jyGk2DXpVFgozy9D7i1KzV4L1JhP_yCN2AlXPDD2-eoB_-pDkpB7iVs7DjmJ_Se-AYLwh0GxPJd-foiVyq4Yk"  https://ord.networks.api.rackspacecloud.com/v2.0/ports | jq '.ports| .[]  | {IP: .fixed_ips | .[] .ip_address, server_uuid: .device_id, port_uuid: .id}' 
 
+-----------------------------------------------------------------------------------------------------------
+
 
 #### force ipv4 monitoring ####
-
 monitoring_snet_region $dc
+
+-----------------------------------------------------------------------------------------------------------
+
 
 #### Image Metadata ####
 https://one.rackspace.com/pages/viewpage.action?title=Image+Metadata+for+OpenCloud+Cloud+Servers&spaceKey=compute
 
-####Find PBDs####
-uuid=instance-24e8e043-cfee-4ddc-8f17-e0fb466c96e3 ;for i in `xe vbd-list vm-name-label=$uuid params=vdi-uuid | cut -d ":" -f 2 | sed 's/[*. /t]//g'  `; do xe vdi-list uuid=$i params=sr-uuid |cut -d ":" -f 2 | sed 's/[*. /t]//g' | grep FA15E; done
+-----------------------------------------------------------------------------------------------------------
 
-####Footer Check####
-uuid=instance-301ed56a-5fdb-4b3e-b738-746c1e1711e1 ; for g in $(for pbd in $(for i in `xe vbd-list vm-name-label=$uuid params=vdi-uuid | cut -d ":" -f 2 | sed 's/[*. /t]//g'  `; do xe vdi-list uuid=$i params=sr-uuid |cut -d ":" -f 2 | sed 's/[*. /t]//g' | grep FA15E; done) ; do xe pbd-list sr-uuid=$pbd params=uuid | cut -d ":" -f 2 | sed 's/[*. /t]//g'; done) ; do xe pbd-unplug uuid=$g && xe pbd-plug uuid=$g ; done
+
+####Find PBDs####
+uuid=instance-d126da37-efa9-4088-bcf0-9a94d7120016 ;for i in `xe vbd-list vm-name-label=$uuid params=vdi-uuid | cut -d ":" -f 2 | sed 's/[*. /t]//g'  `; do xe vdi-list uuid=$i params=sr-uuid |cut -d ":" -f 2 | sed 's/[*. /t]//g' | grep FA15E; done
+
+-----------------------------------------------------------------------------------------------------------
+
+
+####PBD re-plug####
+uuid=instance-2ac8aa53-9c98-4f92-871e-aa12b890ecb5 ; for g in $(for pbd in $(for i in `xe vbd-list vm-name-label=$uuid params=vdi-uuid | cut -d ":" -f 2 | sed 's/[*. /t]//g'  `; do xe vdi-list uuid=$i params=sr-uuid |cut -d ":" -f 2 | sed 's/[*. /t]//g' | grep FA15E; done) ; do xe pbd-list sr-uuid=$pbd params=uuid | cut -d ":" -f 2 | sed 's/[*. /t]//g'; done) ; do xe pbd-unplug uuid=$g && xe pbd-plug uuid=$g ; done
+
+-----------------------------------------------------------------------------------------------------------
+
+
+####unknown high load on host####
+service lwsmd restart && service lwregd restart 
+
+-----------------------------------------------------------------------------------------------------------
+
+
+#### Command line install for driveclient ####
+msiexec /i driveclient-latest.msi /qn /l*v %tmp%\install.log APIUSER=$USER AUTHTOKEN=$TOKEN APIHOSTNAME=api.drivesrvr.com DATACENTER=$DATACENTER FLAVOR=raxcloudserver
+
+-----------------------------------------------------------------------------------------------------------
+
+
+###AS with RC###
+https://one.rackspace.com/display/escsc/AutoScale+-+With+RackConnect
+
+-----------------------------------------------------------------------------------------------------------
+
+
+###HP RAID ###
+hpacucli ctrl slot=1 ld 1 show
+
+-----------------------------------------------------------------------------------------------------------
+
+
+####set memory limits####
+xe vm-memory-limits-set uuid=5da120a3-97ea-8d3a-1c91-69098585aebf static-min=4294967296 static-max=4294967296 dynamic-min=4294967296 dynamic-max=4294967296

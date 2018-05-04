@@ -75,6 +75,7 @@
            <li><a href="#createserverimage">Create an Image of a Next Gen Server</a></li>
            <li><a href="#attachcbs">Attach Cloud Block Storage</a></li>
            <li><a href="#detachcbs">Detach Cloud Block Storage</a></li>
+	   <li><a href="#deletecbs">Delete Cloud Block Storage</a></li>
         </ul>
       </div>
         <div class="col-md-9 scripts">
@@ -138,7 +139,10 @@
           <h4 id="detachcbs">Detach Cloud Block Storage</h4>
           This script will let you detach your Block Storage device from a cloud server that it's already attached to.
           <pre class="script-container" data-scriptname="detachcbs"></pre>
-        </div>
+          <h4 id="deletecbs">Delete Cloud Block Storage</h4>
+	  This script will attempt to delete a Block Storage Device from your account.
+	  <pre class="script-container" data-scriptname="deletecbs"></pre>
+     	</div>
       </div>
     </div> <!-- /container -->
 

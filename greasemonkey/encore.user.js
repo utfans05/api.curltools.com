@@ -1,13 +1,15 @@
 // ==UserScript==
 // @name        Important Server Data Encore
 // @namespace   encore.serverdata
-// @include     https://encore.rackspace.com/cloud/*
+// @include     https://apps.encore.rackspace.com/cloud/*
 // @require     http://ajax.googleapis.com/ajax/libs/jquery/1.8.3/jquery.min.js
 // @require     https://gist.github.com/raw/2625891/waitForKeyElements.js
-// @version     1
+// @version     1.1
 // @grant       none
 // ==/UserScript==
 /* Script written by Patrick Hudson, patrick.hudson@rackspace.com */
+/* Version updated to 1.1 to reflect new include - john.hunneman@rackspace.com
+  */
 waitForKeyElements (".server-actions", checkIfHidden);
 
 function checkIfHidden(){
@@ -25,7 +27,7 @@ function checkIfHidden(){
 }
 function getServerInfo(){
     if ($('.serverInfoESC').length > 0) {
-        console.log("already on page");
+        //console.log("already on page");
     }
     else{
         var pathname = window.location.pathname;
@@ -39,4 +41,3 @@ function getServerInfo(){
     }
 
 }
-

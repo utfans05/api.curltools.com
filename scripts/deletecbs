@@ -1,0 +1,28 @@
+#!/bin/bash
+
+
+auth() {
+    read -p "What is your Account Number: " ddi
+    read -p "Whats your username:" username    
+    read -p "Whats your APIkey:" APIkey
+    read -p "Which Datacenter is the CBS in? " DC
+    read -p "What is the CBS volume UUID? " CBS
+}
+
+token() {
+    token=`curl -s https://identity.api.rackspacecloud.com/v2.0/tokens -X POST \
+    -d '{"auth":{"RAX-KSKEY:apiKeyCredentials":{"username":"'$username'", "apiKey":"'$APIkey'"}}}' \
+    -H "Content-Type: application/json" | python -m json.tool  | sed -n '/expires/{n;p;}' |sed -e 's/^.*"id": "\(.*\)",/\1/'`
+    echo "Your API Token is ---->  $token"
+}
+
+delete() {
+    curl -i -H "X-Auth-Token: $token " -H "Content-Type: application/json" \
+    -X DELETE "https://$DC.blockstorage.api.rackspacecloud.com/v1/$ddi/volumes/$CBS" 
+}
+
+
+
+auth
+token
+delete

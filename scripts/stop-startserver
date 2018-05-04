@@ -1,0 +1,31 @@
+#!/bin/bash
+
+auth() {
+    read -p "What is the Account Number: " ddi
+    read -p "What is the API Token:" token
+    read -p "Which Datacenter is the server in? " dc
+}
+
+reboot() {
+    read -p "Which server do you want to reboot? (UUID)" id
+
+    echo "STOPPING SERVER NOW"
+    curl -s -X POST "https://$dc.servers.api.rackspacecloud.com/v2/$ddi/servers/$id/action" \
+    -H "X-Auth-Token: $token" -H "Content-Type: application/json"  -d '{"os-stop" : "null" }'
+
+    echo "Waiting for STOP command to process. (60 seconds)"
+    secs=$((1 * 60))
+    while [ $secs -gt 0 ]; do
+    echo -ne "$secs\033[0K\r"
+    sleep 1
+    : $((secs--))
+    done
+
+    echo "STARTING SERVER NOW"
+    curl -s -X POST "https://$dc.servers.api.rackspacecloud.com/v2/$ddi/servers/$id/action" \
+    -H "X-Auth-Token: $token" -H "Content-Type: application/json"  -d '{"os-start" : "null" }'
+
+}
+
+auth
+reboot
